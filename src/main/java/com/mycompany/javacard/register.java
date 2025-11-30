@@ -7,6 +7,8 @@ package com.mycompany.javacard;
 import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import javax.swing.JOptionPane;
 
 /**
@@ -68,6 +70,12 @@ public class register extends javax.swing.JFrame {
         registerBtn.addActionListener(this::registerBtnActionPerformed);
 
         jLabel6.setText("Mã PIN");
+
+        // Thêm Label và TextField Email
+        jLabelEmail = new javax.swing.JLabel();
+        txtEmail = new javax.swing.JTextField();
+
+        jLabelEmail.setText("Email:");
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -144,47 +152,79 @@ public class register extends javax.swing.JFrame {
         // TODO add your handling code here:
     }//GEN-LAST:event_phoneNumberActionPerformed
 
-    private void registerBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerBtnActionPerformed
-        // TODO add your handling code here:
-        String p = pin.getText();
-    String name = fullName.getText();
-    String dob = dateOfBirth.getText();
-    String prov = province.getText();
-    String phone = phoneNumber.getText();
+    private String convertToISODate(String inputDate) {
+        try {
+            // Giả sử người dùng nhập dd/MM/yyyy (ví dụ: 20/05/2002)
+            SimpleDateFormat inputFormat = new SimpleDateFormat("dd/MM/yyyy");
+            Date date = inputFormat.parse(inputDate);
 
-    // 2. Validate: Kiểm tra xem có ô nào bị bỏ trống không
-    if (p.isEmpty() || name.isEmpty() || dob.isEmpty() || prov.isEmpty() || phone.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ tất cả thông tin!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
-        return;
-    }
-    
-    // Validate độ dài PIN (ví dụ Applet quy định 6 số)
-    if (p.length() != 6) {
-         JOptionPane.showMessageDialog(this, "Mã PIN phải có đúng 6 ký tự!", "Lỗi PIN", JOptionPane.WARNING_MESSAGE);
-         return;
-    }
-
-    // 3. Kết nối và Đăng ký
-    SmartCardWork card = new SmartCardWork();
-    if (card.connectCard()) {
-        // Gọi hàm register trong SmartCardWork
-        if (card.register(p, name, dob, prov, phone)) {
-            JOptionPane.showMessageDialog(this, "Đăng ký thành công! Chuyển sang đăng nhập.");
-            
-            // Đóng form Register
-            this.dispose(); 
-            
-            // Mở form Login
-            new login().setVisible(true); 
-            
-        } else {
-            JOptionPane.showMessageDialog(this, "Đăng ký thất bại! Có thể do lỗi thẻ hoặc thẻ đã đầy.", "Lỗi", JOptionPane.ERROR_MESSAGE);
+            // Chuyển sang chuẩn ISO 8601 (yyyy-MM-dd)
+            SimpleDateFormat outputFormat = new SimpleDateFormat("yyyy-MM-dd");
+            return outputFormat.format(date);
+        } catch (Exception e) {
+            return null; // Trả về null nếu lỗi định dạng
         }
-        card.disconnect();
-    } else {
-        JOptionPane.showMessageDialog(this, "Không tìm thấy thẻ! Vui lòng kiểm tra đầu đọc hoặc Simulator.", "Lỗi kết nối", JOptionPane.ERROR_MESSAGE);
     }
-    }//GEN-LAST:event_registerBtnActionPerformed
+
+    private void registerBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerBtnActionPerformed
+        String p = pin.getText();
+        String name = fullName.getText();
+        String dobRaw = dateOfBirth.getText();
+        String prov = province.getText();
+        String phone = phoneNumber.getText();
+        String email = "sondoannam202@gmail.com";
+
+        // 2. Validate: Kiểm tra xem có ô nào bị bỏ trống không
+        if (p.isEmpty() || name.isEmpty() || dobRaw.isEmpty() || prov.isEmpty() || phone.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Vui lòng nhập đầy đủ tất cả thông tin!", "Thiếu thông tin", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Validate và Convert Ngày sinh
+        String dobISO = convertToISODate(dobRaw);
+        if (dobISO == null) {
+            JOptionPane.showMessageDialog(this, "Ngày sinh không hợp lệ! Vui lòng nhập đúng định dạng dd/MM/yyyy (VD: 20/05/2002)", "Lỗi định dạng", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        // Validate độ dài PIN (ví dụ Applet quy định 6 số)
+        if (p.length() != 6) {
+             JOptionPane.showMessageDialog(this, "Mã PIN phải có đúng 6 ký tự!", "Lỗi PIN", JOptionPane.WARNING_MESSAGE);
+             return;
+        }
+
+        // 3. Kết nối và Đăng ký
+        SmartCardWork card = new SmartCardWork();
+        if (card.connectCard()) {
+            // A. Gọi Thẻ: Lưu Info + Sinh Key
+            String idAndPublicKeyHex = card.register(p, name, dobRaw, prov, phone);
+
+            if (idAndPublicKeyHex != null) {
+                // Lấy ID thẻ
+                String[] splitted = idAndPublicKeyHex.split("\\|");
+                String cardId = splitted[0];
+                String publicKeyHex = splitted[1];
+
+                // B. Gọi Backend: Lưu vào Database
+                APIService apiService = new APIService();
+                System.out.println("Payload: " + cardId + "\n" + publicKeyHex + "\n" + name + "\n" + dobRaw + "\n" + prov + "\n" + phone + "\n" + email );
+                boolean beResult = apiService.registerCard(cardId, publicKeyHex, name, dobISO, prov, phone, email);
+
+                if (beResult) {
+                    JOptionPane.showMessageDialog(this, "Đăng ký thành công (Thẻ + DB)!");
+                    this.dispose();
+                    new login().setVisible(true);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Lỗi: Lưu vào thẻ thành công nhưng lưu Server thất bại!");
+                }
+            } else {
+                JOptionPane.showMessageDialog(this, "Đăng ký thẻ thất bại! (Lỗi Applet)");
+            }
+            card.disconnect();
+        } else {
+            JOptionPane.showMessageDialog(this, "Không tìm thấy thẻ! Vui lòng kiểm tra đầu đọc hoặc Simulator.", "Lỗi kết nối", JOptionPane.ERROR_MESSAGE);
+        }
+    }
 
     /**
      * @param args the command line arguments
@@ -224,5 +264,6 @@ public class register extends javax.swing.JFrame {
     private javax.swing.JTextField pin;
     private javax.swing.JTextField province;
     private javax.swing.JButton registerBtn;
-    // End of variables declaration//GEN-END:variables
+    private javax.swing.JLabel jLabelEmail;
+    private javax.swing.JTextField txtEmail;
 }
