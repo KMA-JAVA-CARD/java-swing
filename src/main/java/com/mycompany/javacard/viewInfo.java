@@ -19,8 +19,23 @@ public class viewInfo extends javax.swing.JFrame {
     /**
      * Creates new form viewInfo
      */
-    public viewInfo() {
+    public viewInfo(APIService.CardResponse cardData) {
         initComponents();
+
+        // Hiển thị dữ liệu lên các ô Text Field
+        if (cardData != null && cardData.user != null) {
+            fullName.setText(cardData.user.fullName);
+            phoneNumber.setText(cardData.user.phone);
+            province.setText(cardData.user.address);
+
+            // Xử lý ngày sinh (Backend trả về yyyy-MM-dd, ta có thể format lại nếu muốn)
+            dateOfBirth.setText(cardData.user.dob);
+            email.setText(cardData.user.email);
+
+
+            // Hiển thị thêm điểm tích lũy
+            // txtPoint.setText(String.valueOf(cardData.pointBalance));
+        }
         hienThiThongTin();
     }
 
@@ -128,93 +143,88 @@ public class viewInfo extends javax.swing.JFrame {
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void endBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_endBtnActionPerformed
-        // TODO add your handling code here:
+    private void endBtnActionPerformed(java.awt.event.ActionEvent evt) {
         System.exit(0);
-    }//GEN-LAST:event_endBtnActionPerformed
+    }
 
-    private void changePinBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_changePinBtnActionPerformed
+    private void changePinBtnActionPerformed(java.awt.event.ActionEvent evt) {
         // TODO add your handling code here:
         // 1. Yêu cầu nhập PIN mới qua InputDialog
-    String newPin = javax.swing.JOptionPane.showInputDialog(this, "Nhập mã PIN mới (6 số):");
-    
-    if (newPin == null || newPin.isEmpty()) return; // Người dùng ấn Cancel
-    
-    if (newPin.length() != 6) {
-        javax.swing.JOptionPane.showMessageDialog(this, "Mã PIN phải có 6 ký tự!");
-        return;
-    }
-    
-    // 2. Gọi lệnh đổi PIN
-    SmartCardWork card = new SmartCardWork();
-    if (card.connectCard()) {
-        // Lưu ý: Để đổi PIN, thẻ yêu cầu phải Verify PIN cũ trước. 
-        // Trong phiên làm việc này, nếu applet chưa "quên" trạng thái đã verify thì ok.
-        // Nhưng an toàn nhất là yêu cầu nhập lại PIN cũ để xác thực rồi mới đổi.
-        
-        // (Cách đơn giản cho demo: Giả sử User vừa Login xong, thẻ vẫn đang nhớ trạng thái Validated)
-        if (card.changePin(newPin)) {
-             javax.swing.JOptionPane.showMessageDialog(this, "Đổi PIN thành công!");
-        } else {
-             javax.swing.JOptionPane.showMessageDialog(this, "Đổi PIN thất bại! (Có thể do chưa xác thực PIN cũ)");
-        }
-        card.disconnect();
-    } else {
-        javax.swing.JOptionPane.showMessageDialog(this, "Lỗi kết nối thẻ!");
-    }
-    }//GEN-LAST:event_changePinBtnActionPerformed
+        String newPin = javax.swing.JOptionPane.showInputDialog(this, "Nhập mã PIN mới (6 số):");
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String args[]) {
-        /* Set the Nimbus look and feel */
-        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
-        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
-         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html 
-         */
-        try {
-            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
-                if ("Nimbus".equals(info.getName())) {
-                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
-                    break;
+        if (newPin == null || newPin.isEmpty()) return; // Người dùng ấn Cancel
+
+        if (newPin.length() != 6) {
+            javax.swing.JOptionPane.showMessageDialog(this, "Mã PIN phải có 6 ký tự!");
+            return;
+        }
+
+        // 2. Gọi lệnh đổi PIN
+        SmartCardWork card = new SmartCardWork();
+        if (card.connectCard()) {
+            // Lưu ý: Để đổi PIN, thẻ yêu cầu phải Verify PIN cũ trước.
+            // Trong phiên làm việc này, nếu applet chưa "quên" trạng thái đã verify thì ok.
+            // Nhưng an toàn nhất là yêu cầu nhập lại PIN cũ để xác thực rồi mới đổi.
+
+            // (Cách đơn giản cho demo: Giả sử User vừa Login xong, thẻ vẫn đang nhớ trạng thái Validated)
+            if (card.changePin(newPin)) {
+                 javax.swing.JOptionPane.showMessageDialog(this, "Đổi PIN thành công!");
+            } else {
+                 javax.swing.JOptionPane.showMessageDialog(this, "Đổi PIN thất bại! (Có thể do chưa xác thực PIN cũ)");
+            }
+            card.disconnect();
+        } else {
+            javax.swing.JOptionPane.showMessageDialog(this, "Lỗi kết nối thẻ!");
+        }
+    }
+
+//    /**
+//     * @param args the command line arguments
+//     */
+//    public static void main(String args[]) {
+//        /* Set the Nimbus look and feel */
+//        //<editor-fold defaultstate="collapsed" desc=" Look and feel setting code (optional) ">
+//        /* If Nimbus (introduced in Java SE 6) is not available, stay with the default look and feel.
+//         * For details see http://download.oracle.com/javase/tutorial/uiswing/lookandfeel/plaf.html
+//         */
+//        try {
+//            for (javax.swing.UIManager.LookAndFeelInfo info : javax.swing.UIManager.getInstalledLookAndFeels()) {
+//                if ("Nimbus".equals(info.getName())) {
+//                    javax.swing.UIManager.setLookAndFeel(info.getClassName());
+//                    break;
+//                }
+//            }
+//        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
+//            logger.log(java.util.logging.Level.SEVERE, null, ex);
+//        }
+//        //</editor-fold>
+//
+//        /* Create and display the form */
+//        java.awt.EventQueue.invokeLater(() -> new viewInfo().setVisible(true));
+//    }
+
+    private void hienThiThongTin() {
+        SmartCardWork card = new SmartCardWork();
+        if (card.connectCard()) {
+            // Lấy chuỗi data dạng "Ten|NgaySinh|Que|SDT"
+            String data = card.getUserInfo();
+
+            if (data != null && !data.isEmpty()) {
+                // Tách chuỗi bằng dấu "|"
+                String[] parts = data.split("\\|");
+
+                if (parts.length >= 4) {
+                    fullName.setText(parts[0]);
+                    dateOfBirth.setText(parts[1]);
+                    province.setText(parts[2]);
+                    phoneNumber.setText(parts[3]);
                 }
             }
-        } catch (ReflectiveOperationException | javax.swing.UnsupportedLookAndFeelException ex) {
-            logger.log(java.util.logging.Level.SEVERE, null, ex);
+            card.disconnect();
+        } else {
+            javax.swing.JOptionPane.showMessageDialog(this, "Lỗi kết nối thẻ khi lấy thông tin!");
         }
-        //</editor-fold>
-
-        /* Create and display the form */
-        java.awt.EventQueue.invokeLater(() -> new viewInfo().setVisible(true));
     }
-    // Nhớ import thư viện này ở đầu file: 
-// import java.io.BufferedReader;
-// import java.io.FileReader;
-// import java.io.IOException;
-
-private void hienThiThongTin() {
-    SmartCardWork card = new SmartCardWork();
-    if (card.connectCard()) {
-        // Lấy chuỗi data dạng "Ten|NgaySinh|Que|SDT"
-        String data = card.getUserInfo();
-        
-        if (data != null && !data.isEmpty()) {
-            // Tách chuỗi bằng dấu "|"
-            String[] parts = data.split("\\|");
-            
-            if (parts.length >= 4) {
-                fullName.setText(parts[0]);
-                dateOfBirth.setText(parts[1]);
-                province.setText(parts[2]);
-                phoneNumber.setText(parts[3]);
-            }
-        }
-        card.disconnect();
-    } else {
-        javax.swing.JOptionPane.showMessageDialog(this, "Lỗi kết nối thẻ khi lấy thông tin!");
-    }
-}
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton changePinBtn;
@@ -228,5 +238,6 @@ private void hienThiThongTin() {
     private javax.swing.JLabel jLabel5;
     private javax.swing.JTextField phoneNumber;
     private javax.swing.JTextField province;
+    private javax.swing.JTextField email;
     // End of variables declaration//GEN-END:variables
 }
