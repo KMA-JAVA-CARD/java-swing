@@ -8,7 +8,9 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import javax.swing.JOptionPane;
-
+import javax.smartcardio.*;
+import java.util.List;
+import javax.swing.JOptionPane;
 /**
  *
  * @author huyho
@@ -38,6 +40,7 @@ public class login extends javax.swing.JFrame {
         pin = new javax.swing.JPasswordField();
         confirmBtn = new javax.swing.JButton();
         btnRegisterLink = new javax.swing.JButton();
+        btnResetPin = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
 
@@ -54,27 +57,32 @@ public class login extends javax.swing.JFrame {
         btnRegisterLink.setText("ĐĂNG KÝ");
         btnRegisterLink.addActionListener(this::btnRegisterLinkActionPerformed);
 
+        btnResetPin.setText("RESET");
+        btnResetPin.addActionListener(this::btnResetPinActionPerformed);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addContainerGap()
-                        .addComponent(btnRegisterLink)
-                        .addGap(96, 96, 96)
-                        .addComponent(confirmBtn))
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                        .addGroup(layout.createSequentialGroup()
-                            .addGap(173, 173, 173)
-                            .addComponent(pin, javax.swing.GroupLayout.PREFERRED_SIZE, 229, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGroup(layout.createSequentialGroup()
-                            .addGap(232, 232, 232)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
-                                .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
-                                .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE)))))
+                        .addGap(173, 173, 173)
+                        .addComponent(pin, javax.swing.GroupLayout.PREFERRED_SIZE, 229, javax.swing.GroupLayout.PREFERRED_SIZE))
+                    .addGroup(layout.createSequentialGroup()
+                        .addGap(232, 232, 232)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(jLabel2, javax.swing.GroupLayout.PREFERRED_SIZE, 67, javax.swing.GroupLayout.PREFERRED_SIZE)
+                            .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 101, javax.swing.GroupLayout.PREFERRED_SIZE))))
                 .addContainerGap(201, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
+                .addComponent(btnRegisterLink)
+                .addGap(18, 18, 18)
+                .addComponent(confirmBtn)
+                .addGap(18, 18, 18)
+                .addComponent(btnResetPin)
+                .addGap(186, 186, 186))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -88,38 +96,96 @@ public class login extends javax.swing.JFrame {
                 .addGap(61, 61, 61)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(confirmBtn)
-                    .addComponent(btnRegisterLink))
+                    .addComponent(btnRegisterLink)
+                    .addComponent(btnResetPin))
                 .addContainerGap(119, Short.MAX_VALUE))
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
+private void performLogin() {
+    String inputPin = new String(pin.getPassword()); 
 
-    private void performLogin() {
-        String inputPin = new String(pin.getPassword()); // Lấy PIN từ ô nhập
-
-        if (inputPin.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vui lòng nhập mã PIN!");
-            return;
-        }
-
-        SmartCardWork card = new SmartCardWork();
-        if (card.connectCard()) {
-            // Gọi hàm verifyPin của SmartCardWork (Gửi lệnh APDU 0x02)
-            if (card.verifyPin(inputPin)) {
-                // -- ĐĂNG NHẬP THÀNH CÔNG --
-                this.dispose(); // Đóng Login
-                new viewInfo().setVisible(true); // Mở trang thông tin
-            } else {
-                // -- ĐĂNG NHẬP THẤT BẠI --
-                JOptionPane.showMessageDialog(this, "Sai mã PIN! Vui lòng thử lại.", "Cảnh báo", JOptionPane.WARNING_MESSAGE);
-            }
-            card.disconnect();
-        } else {
-            JOptionPane.showMessageDialog(this, "Không tìm thấy thẻ!", "Lỗi kết nối", JOptionPane.ERROR_MESSAGE);
-        }
+    if (inputPin.isEmpty()) {
+        JOptionPane.showMessageDialog(this, "Vui lòng nhập mã PIN!");
+        return;
     }
 
+    Card card = null;
+
+    try {
+        TerminalFactory factory = TerminalFactory.getDefault();
+        List<CardTerminal> terminals = factory.terminals().list();
+        if (terminals.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không tìm thấy đầu đọc thẻ!");
+            return;
+        }
+        CardTerminal terminal = terminals.get(0);
+        
+        // 1. Kết nối thẻ
+        card = terminal.connect("*");
+        CardChannel channel = card.getBasicChannel();
+
+        // --- BƯỚC QUAN TRỌNG MỚI THÊM: SELECT APPLET ---
+        // AID này lấy từ log của bạn: A0 00 00 00 62 03 01 0A 01 00
+        byte[] aid = new byte[]{
+            (byte)0xA0, 0x00, 0x00, 0x00, 0x62, 0x03, 0x01, 0x0A, 0x01, 0x00
+        };
+        // Lệnh Select: 00 A4 04 00 [Length] [AID]
+        CommandAPDU selectCmd = new CommandAPDU(0x00, 0xA4, 0x04, 0x00, aid);
+        ResponseAPDU selectResp = channel.transmit(selectCmd);
+
+        if (selectResp.getSW() != 0x9000) {
+            JOptionPane.showMessageDialog(this, "Lỗi: Không tìm thấy Applet (Sai AID hoặc chưa cài đặt)!");
+            card.disconnect(false);
+            return;
+        }
+        // -----------------------------------------------
+
+        // 3. Chuyển chuỗi PIN thành mảng byte
+        byte[] pinBytes = inputPin.getBytes();
+
+        // 4. Tạo lệnh APDU Verify (CLA=0xA0, INS=0x02)
+        CommandAPDU verifyCmd = new CommandAPDU(0xA0, 0x02, 0x00, 0x00, pinBytes);
+
+        // 5. Gửi lệnh
+        ResponseAPDU response = channel.transmit(verifyCmd);
+        int sw = response.getSW(); 
+
+        // 6. Xử lý phản hồi
+        if (sw == 0x9000) {
+            // -- ĐĂNG NHẬP THÀNH CÔNG --
+            this.dispose(); 
+            new viewInfo().setVisible(true); 
+            
+        } else if (sw == 0x6983) {
+            // -- THẺ BỊ KHÓA --
+            JOptionPane.showMessageDialog(this, "Thẻ đã bị KHÓA do nhập sai quá 3 lần!\nVui lòng nhấn nút RESET để mở khóa.", "Thẻ bị khóa", JOptionPane.ERROR_MESSAGE);
+            
+        } else if ((sw & 0xFFF0) == 0x63C0) {
+            // -- SAI PIN --
+            int retries = sw & 0x0F;
+            JOptionPane.showMessageDialog(this, "Sai mã PIN!\nSố lần thử còn lại: " + retries, "Cảnh báo", JOptionPane.WARNING_MESSAGE);
+            
+        } else {
+            // -- LỖI KHÁC --
+            JOptionPane.showMessageDialog(this, "Lỗi không xác định: " + Integer.toHexString(sw));
+        }
+
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Lỗi kết nối thẻ: " + e.getMessage());
+        e.printStackTrace();
+    } finally {
+        if (card != null) {
+            try {
+                // disconnect(true) để Reset thẻ cho lần sau sạch sẽ
+                card.disconnect(true); 
+            } catch (CardException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+}
     private void pinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_pinActionPerformed
         // TODO add your handling code here:
         performLogin();
@@ -136,6 +202,16 @@ public class login extends javax.swing.JFrame {
         this.dispose(); // Đóng form Login
         new register().setVisible(true); // Mở form Đăng ký
     }//GEN-LAST:event_btnRegisterLinkActionPerformed
+
+    private void btnResetPinActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_btnResetPinActionPerformed
+        int confirm = JOptionPane.showConfirmDialog(null, 
+                "Bạn có chắc chắn muốn reset PIN về 123456 không?", 
+                "Xác nhận", JOptionPane.YES_NO_OPTION);
+                
+        if (confirm == JOptionPane.YES_OPTION) {
+            unblockPinCard();
+        }
+    }//GEN-LAST:event_btnResetPinActionPerformed
 
     /**
      * @param args the command line arguments
@@ -161,9 +237,51 @@ public class login extends javax.swing.JFrame {
         /* Create and display the form */
         java.awt.EventQueue.invokeLater(() -> new login().setVisible(true));
     }
+    // Hàm kết nối thẻ và gửi lệnh Reset PIN (0x05)
+private void unblockPinCard() {
+    try {
+        // 1. Tìm và kết nối thiết bị đọc thẻ
+        TerminalFactory factory = TerminalFactory.getDefault();
+        List<CardTerminal> terminals = factory.terminals().list();
+        if (terminals.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Không tìm thấy đầu đọc thẻ!");
+            return;
+        }
+        CardTerminal terminal = terminals.get(0);
+        
+        // 2. Kết nối tới thẻ
+        Card card = terminal.connect("*");
+        CardChannel channel = card.getBasicChannel();
+
+        // 3. (Quan trọng) Gửi lệnh Select Applet trước nếu cần
+        // Nếu thẻ chưa được select, bạn cần gửi lệnh Select AID ở đây. 
+        // Tuy nhiên, với lệnh CLA 0xA0 trong demo, ta sẽ thử gửi trực tiếp lệnh Reset.
+
+        // 4. Gửi lệnh Unblock/Reset PIN
+        // CLA=0xA0 (theo demo.java), INS=0x05 (INS_UNBLOCK_PIN)
+        ResponseAPDU response = channel.transmit(new CommandAPDU(0xA0, 0x05, 0x00, 0x00));
+
+        // 5. Kiểm tra kết quả
+        if (response.getSW() == 0x9000) {
+            JOptionPane.showMessageDialog(this, "Reset thành công!\nMã PIN đã về mặc định: 123456");
+        } else {
+            // Nếu lỗi, hiển thị mã lỗi (ví dụ 6983 là bị khóa, nhưng lệnh này dùng để mở khóa nên thường sẽ trả về 9000)
+            JOptionPane.showMessageDialog(this, "Lỗi reset thẻ. Mã lỗi: " 
+                    + Integer.toHexString(response.getSW()));
+        }
+
+        // 6. Ngắt kết nối
+        card.disconnect(false);
+        
+    } catch (Exception e) {
+        JOptionPane.showMessageDialog(this, "Lỗi kết nối: " + e.getMessage());
+        e.printStackTrace();
+    }
+}
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton btnRegisterLink;
+    private javax.swing.JButton btnResetPin;
     private javax.swing.JButton confirmBtn;
     private javax.swing.JLabel jLabel1;
     private javax.swing.JLabel jLabel2;

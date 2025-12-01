@@ -1,5 +1,7 @@
 javaCard\viewInfo.class
 com\mycompany\javacard\register.class
+com\mycompany\javacard\APIService$RegisterRequest.class
+com\mycompany\javacard\APIService.class
 com\mycompany\javacard\SmartCardWork.class
 javaCard\confirm.class
 com\mycompany\javacard\viewInfo.class
