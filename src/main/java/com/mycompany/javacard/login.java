@@ -107,9 +107,21 @@ public class login extends javax.swing.JFrame {
         if (card.connectCard()) {
             // Gọi hàm verifyPin của SmartCardWork (Gửi lệnh APDU 0x02)
             if (card.verifyPin(inputPin)) {
-                // -- ĐĂNG NHẬP THÀNH CÔNG --
-                this.dispose(); // Đóng Login
-                new viewInfo().setVisible(true); // Mở trang thông tin
+                String cardId = card.getCardID();
+                if (cardId != null) {
+                    // 3. Gọi Backend lấy thông tin User
+                    APIService api = new APIService();
+                    APIService.CardResponse cardInfo = api.getCardInfo(cardId);
+
+                    if (cardInfo != null) {
+                        this.dispose();
+                        new viewInfo(cardInfo).setVisible(true); // Mở ViewInfo
+                    } else {
+                        JOptionPane.showMessageDialog(this, "Thẻ hợp lệ nhưng không tìm thấy dữ liệu trên Server!", "Lỗi Backend", JOptionPane.ERROR_MESSAGE);
+                    }
+                } else {
+                    JOptionPane.showMessageDialog(this, "Không đọc được ID thẻ!", "Lỗi Thẻ", JOptionPane.ERROR_MESSAGE);
+                }
             } else {
                 // -- ĐĂNG NHẬP THẤT BẠI --
                 JOptionPane.showMessageDialog(this, "Sai mã PIN! Vui lòng thử lại.", "Cảnh báo", JOptionPane.WARNING_MESSAGE);

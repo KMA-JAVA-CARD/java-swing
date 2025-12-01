@@ -36,6 +36,22 @@ public class APIService {
         }
     }
 
+    public class UserResponse {
+        String fullName;
+        String phone;
+        String email;
+        String address;
+        String dob;
+    }
+
+    public class CardResponse {
+        String cardSerial;
+        int pointBalance;
+        String status;
+        UserResponse user;
+    }
+
+    // Đăng ký thẻ
     public boolean registerCard(String cardId, String publicKey, String name, String dob, String address, String phone, String email) {
         RegisterRequest reqData = new RegisterRequest(cardId, publicKey, name, dob, address, phone,  email);
         String json = gson.toJson(reqData);
@@ -57,6 +73,28 @@ public class APIService {
         } catch (IOException e) {
             e.printStackTrace();
             return false;
+        }
+    }
+
+    // Lấy thông tin thẻ
+    public CardResponse getCardInfo(String cardSerial) {
+        Request request = new Request.Builder()
+                .url(BASE_URL + "/cards/" + cardSerial)
+                .get()
+                .build();
+
+        try (Response response = client.newCall(request).execute()) {
+            if (response.isSuccessful()) {
+                String responseBody = response.body().string();
+                // Parse JSON thành Object CardResponse
+                return gson.fromJson(responseBody, CardResponse.class);
+            } else {
+                System.out.println("API Error: " + response.code());
+                return null;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
         }
     }
 }
