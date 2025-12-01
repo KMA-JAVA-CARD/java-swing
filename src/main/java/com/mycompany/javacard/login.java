@@ -167,7 +167,7 @@ public class login extends javax.swing.JFrame {
         // TODO add your handling code here:
         this.dispose(); // Đóng form Login
         new register().setVisible(true); // Mở form Đăng ký
-    }//GEN-LAST:event_btnRegisterLinkActionPerformed
+    }
 
     /**
      * @param args the command line arguments

@@ -30,7 +30,7 @@ public class viewInfo extends javax.swing.JFrame {
 
             // Xử lý ngày sinh (Backend trả về yyyy-MM-dd, ta có thể format lại nếu muốn)
             dateOfBirth.setText(cardData.user.dob);
-            email.setText(cardData.user.email);
+//            email.setText(cardData.user.email);
 
 
             // Hiển thị thêm điểm tích lũy
