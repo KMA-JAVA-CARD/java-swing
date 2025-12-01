@@ -159,7 +159,7 @@ public class SmartCardWork {
     }
 
     // 2. Chức năng LOGIN (Verify PIN)
-    public boolean verifyPin(String pin) {
+    public int verifyPin(String pin) {
         try {
             byte[] pinBytes = pin.getBytes(StandardCharsets.ISO_8859_1);
 
@@ -167,9 +167,9 @@ public class SmartCardWork {
             CommandAPDU cmd = new CommandAPDU(0xA0, 0x02, 0x00, 0x00, pinBytes);
             ResponseAPDU res = channel.transmit(cmd);
 
-            return res.getSW() == 0x9000;
+            return res.getSW();
         } catch (Exception e) {
-            return false;
+            return 0;
         }
     }
 
